@@ -1,394 +1,126 @@
+# ReachAI
 
+AI generated YouTube metadata that follows what's trending in your niche.
 
+Live at **[reachaiapp.online](https://reachaiapp.online)**
 
-# ReachAI — AI-Powered & Trend-driven YouTube Metadata 
+ReachAI helps YouTube creators get more views from the videos they already have. You enter your channel and email, and it looks at your latest videos, works out your niche, checks what's trending in that niche right now and writes better titles, descriptions, tags and hashtags for each video. The results arrive in your inbox.
 
-ReachAI is an AI-powered backend system that helps YouTube creators improve discoverability by generating trend-aware, SEO-optimized metadata for their videos.
+## Plans
 
-The platform automates the full workflow — from fetching channel data to delivering optimized metadata — using an event-driven backend architecture built with Motia.dev. A minimal Next.js frontend is used only for job submission, payments, and status visibility.
+| Plan | What you get | Price |
+| --- | --- | --- |
+| Free | Two new title ideas for each of your 5 latest videos | ₹0 |
+| Full bundle | Titles, descriptions, tags, hashtags and the reasoning behind them for your 10 latest videos | ₹99 |
 
-Creators can purchase a full metadata bundle for 10 videos at ₹99, with results delivered via email.
+Payments go through Razorpay, and the paid workflow only starts once the payment is verified.
 
----
+## How it works
 
-## 💡 Product Overview
+The backend is built with [Motia](https://motia.dev), an event driven framework where every step is its own small handler. Each step does one job, emits an event when it's done and the next step picks it up. If a step fails, an error handler emails the user instead of leaving the job hanging, and paid jobs can be retried.
 
-ReachAI is designed for creators who want structured, data-driven metadata without spending hours on manual research.  
-The system focuses on reliability and clarity by separating each step of the workflow into independent backend events.
+```mermaid
+flowchart LR
+    A[Submit channel and email] --> B[Resolve channel]
+    B --> C[Fetch latest videos]
+    C --> D[Detect niche with AI]
+    D --> E[Fetch trending videos in that niche]
+    E --> F[Generate metadata with AI]
+    F --> G[Email the results]
+    B & C & D & E & F & G -. on error .-> X[Error handler emails the user]
+```
 
----
+The free and paid plans run the same pipeline as two separate flows.
 
-## 💰 Pricing
+- **Free flow.** `POST /submit` starts the job, and the AI step writes two titles for each of the 5 latest videos.
+- **Paid flow.** `POST /api/payment/create-order` creates a Razorpay order. Once the payment is confirmed, either through `POST /api/payment/verify` from the checkout page or through the Razorpay webhook at `POST /api/payment/webhook`, the job runs for 10 videos and generates the full metadata.
 
-| Plan | Details | Price |
-|------|--------|-------|
-| Free titles | for latest 5 videos two titles for each |  **₹0** |
-| Full Metadata Bundle | Titles, descriptions, tags, hashtags & reasoning for **10 videos** | **₹99** |
+The frontend polls `GET /status` to show progress while a job runs. `POST /api/jobs/:jobId/retry` restarts a failed paid job, and `POST /api/contact` sends contact form messages to the support inbox.
 
-<br>
+## Tech stack
 
-- Payments are handled securely using Razorpay.  
-- The backend workflow starts only after a verified payment event.
+**Backend** (`reachai-backend/`)
 
+- Motia with TypeScript, using the BullMQ plugin for queued events and Motia state for job data
+- YouTube Data API v3 for channels, videos and trending results
+- OpenRouter (`gpt-4o-mini`) for niche detection and metadata
+- Razorpay for orders, payment verification and webhooks
+- Resend for emails
 
+**Frontend** (`frontend/`)
 
-<br>
-<br>
-<br>
+- Next.js 16 and React 19 with TypeScript
+- Tailwind CSS
+- Landing page, checkout, live job status, contact form and legal pages
 
+## Running it locally
 
-
-## ⚙️ Tech Stack
+You'll need Node.js 20 or newer, plus API keys for YouTube, OpenRouter, Resend and Razorpay (test mode works).
 
 ### Backend
-- Motia.dev — Event-driven workflow orchestration
-- TypeScript
-- Node.js
-- YouTube Data API
-- AI (LLM for metadata generation)
-- Email service (Resend email)
-- Razorpay Webhooks
+
+```bash
+git clone https://github.com/AI-pro017/ReachAI.git
+cd ReachAI/reachai-backend
+npm install
+```
+
+Create a `.env` file:
+
+```env
+YOUTUBE_API_KEY=
+OPENAI_API_KEY=            # your OpenRouter key
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=         # sender for result emails
+RESEND_FROM_SUPPORTEMAIL=  # sender for contact form emails
+MERA_EMAIL=                # inbox that receives contact form messages
+FRONTEND_URL=http://localhost:3001
+RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+RAZORPAY_WEBHOOK_SECRET=
+```
+
+Start it:
+
+```bash
+npm run dev
+```
+
+This runs the API on port 3000 and opens the Motia Workbench, where you can watch each flow and its events live.
 
 ### Frontend
-- Next.js  
-- Minimal UI for job submission and status updates
 
-
-<br>
-<br>
-<br>
-
-
-
-## 🧱 Architecture Overview
-
-ReachAI uses an event-driven backend architecture where each step is implemented as an independent Motia event.
-
-
-
-
-
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-
-<br>
-<br>
-<br>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Important concepts during building this project. --  my notes.
-* state = backend storage → “keep everything safe for later.”
-
-* emit = visible output → “show/send only the important part now.”
-
-
-
-
-* map(callback) callback parameters
-
-When you do:
-
-array.map((item, index) => {})
-
-
-The callback receives:
-
-item → current element of array
-
-index → position of the item (always starts from 0)
-
-
-
-
-
-### Why use link instead of li(list) or anchor tag(a). 
-> Benefits:
-
-✔ Single-page navigation
-✔ No reload
-✔ Faster transitions
-✔ SEO-friendly
-✔ Less layout flash
-✔ Works with App Router caching
-
-
-
----
-
-### 💡 Easy Rule of Thumb
-> 🔗 Use <Link /> when:
-
-- User clicks to go somewhere
-
-- It’s obvious navigation
-
-- It’s a static path
-
-> 🧭 Use useRouter() when:
-
-- Trigger is caused by JS logic
-
-- You need to redirect after an action
-
-- You don't want the user to click anything
-
-- The path is dynamic or conditional
-
-
-
-
----
-
-### why key needed in list mainly using .map
-> key is a unique identifier React needs to correctly update list items without confusing them.
-
-React uses key to identify each element uniquely inside a .map().
-
-It helps React know which item changed, added, or removed.
-
-Without a unique key, React may mix up items, causing UI glitches.
-
-Using key={EachTab.id} is perfect because IDs are stable and unique.
-
-
-
-## typescript doubt-
-Example 1: Laptop object
-const laptop = {
-  brand: "Apple",
-  ram: 16,
-  SSD: 512
-};
-
-
-typeof laptop → the object shape:
-
-{
-  brand: string;
-  ram: number;
-  SSD: number;
-}
-
-
-keyof typeof laptop → only the keys:
-
-"brand" | "ram" | "SSD"
-
-
-You can now do:
-
-type LaptopKeys = keyof typeof laptop;
-
-> now after that -
-let key: LaptopKeys;
-
-key = "brand"; // ✔ allowed
-key = "ram";   // ✔ allowed
-key = "SSD";   // ✔ allowed
-key = "model"; //not allowed.
-
-
-
-
-
-## Polling MUST continue (keep trying), unless:
-
-- Job finished (completed)
-- Job failed (failed)
-- Component unmounted (cleanup)
-
-
-### Simple Explanation
-Mounting → When a component first appears on the screen.
-
-Updating → When the component re-renders because props/state changed.
-
-Unmounting → When the component is removed from the screen.
-
-> Think of it like putting up and taking down a poster:
-
-Mount = you hang the poster.
-
-Update = you change the poster’s content.
-
-Unmount = you take the poster off the wall.
-
-
-> react HOOk
-If a function uses useState, useEffect, or other hooks inside it…
-that function MUST be named starting with use
-
-
-
-### What does throw error mean in plain JavaScript?
-Code after throw does not run
-
-Control jumps to the nearest catch
-
-If there is no catch, the function crashes
-
-That’s pure JavaScript behavior.
-
-### What does throw error mean inside a Motia event handler?
-In Motia, handler is not just a function —
-it’s a job executed by a queue.
-
-So Motia interprets throw error as:
-
-“This event execution FAILED.”
-
-```
-Handler throws error
-        ↓
-Is retry left?
-        ↓
-YES → wait 60s → retry event
-NO  → drop event forever
+```bash
+cd ../frontend
+npm install
 ```
 
+Create `frontend/.env.local`:
 
-
-
-
-
-
-
+```env
+NEXT_PUBLIC_BACKEND_URL=http://localhost:3000
+NEXT_PUBLIC_RAZORPAY_KEY_ID=
 ```
 
-//will use this code later--
+Then start it on a different port from the backend:
 
-<tr>
-  <td style="padding:20px 8px;">
-    <table
-      width="100%"
-      cellpadding="0"
-      cellspacing="0"
-      style="
-        background:#111;
-        border-radius:10px;
-        border-collapse:separate;
-        border-spacing:0;
-        overflow:hidden;
-      "
-    >
-      <tr>
-        <td style="padding:30px;text-align:center;">
-
-          <!-- Heading -->
-          <table width="100%" cellpadding="0" cellspacing="0">
-            <tr>
-              <td
-                style="
-                  font-size:20px;
-                  font-weight:700;
-                  color:#ffffff;
-                  padding-bottom:8px;
-                  line-height:26px;
-                  font-family: Arial, Helvetica, sans-serif;
-                "
-              >
-                You're All Set! <span style="line-height:26px;">🎉</span>
-              </td>
-            </tr>
-          </table>
-
-          <!-- Description -->
-          <table width="100%" cellpadding="0" cellspacing="0">
-            <tr>
-              <td
-                style="
-                  font-size:14px;
-                  color:#d1d5db;
-                  line-height:22px;
-                  font-family: Arial, Helvetica, sans-serif;
-                "
-              >
-                Use these optimized titles, descriptions, tags, and hashtags to boost your video performance.
-                <br><br>
-                Want metadata for more videos? Come back anytime!
-              </td>
-            </tr>
-          </table>
-
-        </td>
-      </tr>
-    </table>
-  </td>
-</tr>
-
+```bash
+npm run dev -- -p 3001
 ```
 
+and open http://localhost:3001.
 
+## Project structure
+
+```text
+reachai-backend/
+  src/freeUser/    Steps for the free flow, status endpoint and contact form
+  src/paidUser/    Steps for the paid flow, Razorpay order, verify, webhook and retry
+  motia.config.ts  Motia plugins
+frontend/
+  app/             Pages: home, checkout, thank you, about, contact and legal
+  components/      Landing page sections, forms and pay button
+  hooks/           Job status polling
+docs/
+  learning-notes.md  Notes I wrote while building the project
+```
