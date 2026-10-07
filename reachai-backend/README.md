@@ -1,92 +1,46 @@
-# reachai-backend
+# ReachAI Backend
 
-A Motia tutorial project in TypeScript.
+The event driven backend for [ReachAI](https://reachaiapp.online), built with [Motia](https://motia.dev).
 
-## What is Motia?
+Every step in `src/` is a small handler that either exposes an API endpoint or listens for an event, does one job and emits the next event. See the [main README](../README.md) for the full flow, the env variables and setup.
 
-Motia is an open-source, unified backend framework that eliminates runtime fragmentation by bringing **APIs, background jobs, queueing, streaming, state, workflows, AI agents, observability, scaling, and deployment** into one unified system using a single core primitive, the **Step**.
-
-## Quick Start
+## Running it
 
 ```bash
-# Start the development server
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
 ```
 
-This starts the Motia runtime and the **Workbench** - a powerful UI for developing and debugging your workflows. By default, it's available at [`http://localhost:3000`](http://localhost:3000).
+This starts the API on port 3000 and the Motia Workbench, where you can see both flows and follow each event as it runs.
 
-1. **Open the Workbench** in your browser at [`http://localhost:3000`](http://localhost:3000)
-2. **Click the `Tutorial`** button on the top right of the workbench
-3. **Complete the `Tutorial`** to get an understanding of the basics of Motia and using the Workbench
+## Steps
 
-## Step Types
+**Free flow** (`src/freeUser`)
 
-Every Step has a `type` that defines how it triggers:
+| Step | Trigger | Does |
+| --- | --- | --- |
+| `submit.step.ts` | `POST /submit` | Validates the channel and email and starts a job |
+| `resolve-channel.step.ts` | `yt.submit` | Finds the YouTube channel |
+| `fetch-videos.step.ts` | `yt.channel.resolved` | Gets the latest videos |
+| `fetch-niche.step.ts` | `yt.videos.fetched` | Works out the channel's niche with AI |
+| `trending-videos.step.ts` | `yt.niche.fetched` | Finds trending videos in that niche |
+| `AI-generatedTitles.step.ts` | `yt.trendingVideos.fetched` | Writes two titles for each of the 5 latest videos |
+| `send-email.step.ts` | `yt.AI-Title.fetched` | Emails the titles |
+| `error-handling.step.ts` | any `*.error` event | Emails the user if something failed |
+| `get-status.step.ts` | `GET /status` | Returns job progress |
+| `contact.step.ts` | `POST /api/contact` | Sends contact form messages |
 
-| Type | When it runs | Use case |
-|------|--------------|----------|
-| **`api`** | HTTP request | REST APIs, webhooks |
-| **`event`** | Event emitted | Background jobs, workflows |
-| **`cron`** | Schedule | Cleanup, reports, reminders |
+**Paid flow** (`src/paidUser`)
 
-## Development Commands
-
-```bash
-# Start Workbench and development server
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-
-# Start production server (without hot reload)
-npm run start
-# or
-yarn start
-# or
-pnpm start
-
-# Generate TypeScript types from Step configs
-npm run generate-types
-# or
-yarn generate-types
-# or
-pnpm generate-types
-
-# Build project for deployment
-npm run build
-# or
-yarn build
-# or
-pnpm build
-```
-
-## Project Structure
-
-```
-steps/              # Your Step definitions (or use src/)
-src/                # Shared services and utilities
-motia.config.ts     # Motia configuration
-```
-
-Steps are auto-discovered from your `steps/` or `src/` directories - no manual registration required.
-
-## Tutorial
-
-This project includes an interactive tutorial that will guide you through:
-- Understanding Steps and their types
-- Creating API endpoints
-- Building event-driven workflows
-- Using state management
-- Observing your flows in the Workbench
-
-## Learn More
-
-- [Documentation](https://motia.dev/docs) - Complete guides and API reference
-- [Quick Start Guide](https://motia.dev/docs/getting-started/quick-start) - Detailed getting started tutorial
-- [Core Concepts](https://motia.dev/docs/concepts/overview) - Learn about Steps and Motia architecture
-- [Discord Community](https://discord.gg/motia) - Get help and connect with other developers
+| Step | Trigger | Does |
+| --- | --- | --- |
+| `CreateOrder.step.ts` | `POST /api/payment/create-order` | Creates a Razorpay order |
+| `checkPayment.step.ts` | `POST /api/payment/verify` | Verifies the payment signature and starts the job |
+| `webhook.step.ts` | `POST /api/payment/webhook` | Starts the job from Razorpay's webhook |
+| `fetchVideosPaid.step.ts` | `paidUser.payment.success` | Gets the 10 latest videos |
+| `fetchNichePaid.step.ts` | `paidUser.videosfetched.success` | Works out the niche |
+| `TrendingVidPaidUser.step.ts` | `paidUser.Nichefetched.success` | Finds trending videos |
+| `AI-generatedMetadata.step.ts` | `paidUser.trendVid.success` | Writes titles, descriptions, tags and hashtags |
+| `SendEmail-PaidUser.step.ts` | `paidUser.AImetadata.success` | Emails the full bundle |
+| `paidUser-errorHandling.step.ts` | any paid `*.error` event | Emails the user if something failed |
+| `retry-manual.step.ts` | `POST /api/jobs/:jobId/retry` | Restarts a failed paid job |
